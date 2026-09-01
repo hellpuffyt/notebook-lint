@@ -47,6 +47,9 @@ addopts = "-q"
 
 [tool.ruff]
 line-length = 95
+# The example notebook is deliberately broken - it is what the tool exists
+# to find. Linting fixture data defeats the fixture.
+extend-exclude = ["examples"]
 src = ["src", "tests"]
 
 [tool.ruff.lint]
