@@ -27,16 +27,35 @@ notebooks/train.ipynb
   was careful not to print.
 - **secrets** — vendor-shaped credentials (AWS, GitHub, Slack, Google,
   `sk-…` keys, private key blocks) plus name-and-value credential
-  assignments. Precision over recall: placeholders (`<YOUR-KEY>`,
-  `${API_KEY}`) don't fire, and evidence is always redacted.
+  assignments, in cell sources **and in committed text outputs** (stream
+  output, `text/plain` results, error tracebacks; up to 1 MB of text per
+  cell). Precision over recall: placeholders (`<YOUR-KEY>`, `${API_KEY}`)
+  don't fire, and evidence is always redacted to the first 4 and last 2
+  characters plus the length (values of 8 characters or fewer: first 2) —
+  enough to locate, not to reuse. Images and other binary outputs are not
+  scanned.
 - **order** — `execution_count` running backwards means the committed
   results came from a different order than the file reads; outputs on a
   never-executed cell cannot have come from the committed code at all.
 - **staleness** — judged statically and honestly: a cell that doesn't parse
   cannot run; a top-level read of a name no earlier cell defines depends on
-  a cell that was deleted or moved below it. IPython magics are handled,
-  reads inside function bodies are left alone, and non-Python notebooks are
-  skipped rather than guessed at.
+  a cell that was deleted or moved below it. IPython line magics and shell
+  escapes are blanked, non-Python cell magics (`%%bash`, `%%writefile`,
+  `%%html`, …) are skipped while `%%time`/`%%timeit`/`%%capture`/`%%prun`
+  bodies are still checked, reads inside function and lambda bodies are
+  left alone, undefined-name findings stop after a `from … import *`
+  (the names become unknowable), and non-Python notebooks are skipped
+  rather than guessed at.
+
+## Installation
+
+Not published on PyPI; install from a clone (Python 3.10+):
+
+```console
+git clone https://github.com/hellpuffyt/notebook-lint
+cd notebook-lint
+python -m pip install -e .
+```
 
 ## Usage
 
@@ -67,5 +86,9 @@ pytest
 ruff check .
 mypy
 ```
+
+Security issues: please report privately via
+[GitHub security advisories](https://github.com/hellpuffyt/notebook-lint/security/advisories/new)
+(see [SECURITY.md](SECURITY.md)).
 
 MIT licensed.

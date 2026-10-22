@@ -60,7 +60,10 @@ def _redact(value: str) -> str:
 def check(notebook: Notebook) -> list[Finding]:
     findings = []
     for cell in notebook.cells:
-        hits = scan_text(cell.source)
+        output_hits = scan_text(cell.output_text)
+        hits = scan_text(cell.source) + [
+            (f"{name} (in output)", evidence) for name, evidence in output_hits
+        ]
         if not hits:
             continue
         findings.append(

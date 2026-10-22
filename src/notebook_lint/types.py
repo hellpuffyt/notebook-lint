@@ -55,6 +55,9 @@ class Cell:
     #: about bloat without keeping the payloads themselves in memory.
     output_sizes: tuple[int, ...] = ()
     output_types: tuple[str, ...] = ()
+    #: Text the outputs show (stream text, text/plain, error tracebacks),
+    #: capped per cell, so the secrets check can see what was printed.
+    output_text: str = ""
 
     @property
     def is_code(self) -> bool:
