@@ -82,6 +82,33 @@ def load(path: str | Path) -> Notebook:
     )
 
 
+#: Per-cell cap on retained output text; bounds memory on huge notebooks.
+OUTPUT_TEXT_LIMIT = 1_000_000
+
+
+def _as_text(value: object) -> str:
+    if isinstance(value, list):
+        return "\n".join(str(part) for part in value)
+    return value if isinstance(value, str) else ""
+
+
+def _output_text(outputs_raw: object) -> str:
+    """Printed text from a cell's outputs: what a reader of the committed
+    notebook sees, and where credentials echoed by code end up."""
+    if not isinstance(outputs_raw, list):
+        return ""
+    parts: list[str] = []
+    for output in outputs_raw:
+        if not isinstance(output, dict):
+            continue
+        data = output.get("data")
+        parts.append(_as_text(output.get("text")))
+        parts.append(_as_text(data.get("text/plain")) if isinstance(data, dict) else "")
+        parts.append(_as_text(output.get("evalue")))
+        parts.append(_as_text(output.get("traceback")))
+    return "\n".join(part for part in parts if part)[:OUTPUT_TEXT_LIMIT]
+
+
 def _cell(raw: dict[str, object], index: int) -> Cell:
     source_raw = raw.get("source", "")
     if isinstance(source_raw, list):
@@ -100,6 +127,7 @@ def _cell(raw: dict[str, object], index: int) -> Cell:
             kinds.append(kind if isinstance(kind, str) else "unknown")
 
     return Cell(
+        output_text=_output_text(outputs_raw),
         index=index,
         cell_type=str(raw.get("cell_type", "code")),
         source=source,

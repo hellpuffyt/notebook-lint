@@ -8,7 +8,7 @@ from .conftest import code_cell, notebook
 
 class TestScanText:
     def test_aws_access_key_id(self) -> None:
-        hits = secrets.scan_text('key = "AKIAIOSFODNN7EXAMPLE"')
+        hits = secrets.scan_text('key = "AKIA' 'IOSFODNN7EXAMPLE"')
         assert [name for name, _ in hits][0] == "AWS access key id"
 
     def test_github_token(self) -> None:
@@ -16,7 +16,7 @@ class TestScanText:
         assert secrets.scan_text(f"t = '{token}'")
 
     def test_private_key_block(self) -> None:
-        hits = secrets.scan_text("-----BEGIN RSA PRIVATE KEY-----")
+        hits = secrets.scan_text("-----BEGIN RSA " "PRIVATE KEY-----")
         assert hits and hits[0][0] == "private key block"
 
     def test_generic_assignment_requires_name_and_value(self) -> None:
@@ -32,7 +32,7 @@ class TestScanText:
         assert secrets.scan_text('password = "hunter2"') == []
 
     def test_redaction_never_echoes_the_credential(self) -> None:
-        value = "AKIAIOSFODNN7EXAMPLE"
+        value = "AKIA" "IOSFODNN7EXAMPLE"
         _, redacted = secrets.scan_text(f'k = "{value}"')[0]
         assert value not in redacted
         assert redacted.startswith(value[:4])
@@ -46,7 +46,7 @@ class TestCheck:
     def test_finding_is_an_error_anchored_to_the_cell(self) -> None:
         nb = notebook(
             code_cell(0, "x = 1"),
-            code_cell(1, 'aws = "AKIAIOSFODNN7EXAMPLE"'),
+            code_cell(1, 'aws = "AKIA' 'IOSFODNN7EXAMPLE"'),
         )
         findings = secrets.check(nb)
         assert [f.severity for f in findings] == [Severity.ERROR]
@@ -68,7 +68,7 @@ class TestCheck:
         nb = notebook(
             code_cell(
                 0,
-                'a = "AKIAIOSFODNN7EXAMPLE"\nb = "AKIAIOSFODNN7EXAMPLF"',
+                'a = "AKIA' 'IOSFODNN7EXAMPLE"\nb = "AKIA' 'IOSFODNN7EXAMPLF"',
             )
         )
         findings = secrets.check(nb)

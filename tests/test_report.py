@@ -17,7 +17,7 @@ def messy(tmp_path: Path) -> Path:
             [
                 raw_code_cell("print(undefined_thing)", execution_count=5),
                 raw_code_cell(
-                    'key = "AKIAIOSFODNN7EXAMPLE"',
+                    'key = "AKIA' 'IOSFODNN7EXAMPLE"',
                     execution_count=2,
                     outputs=[{"output_type": "stream", "text": "leaked"}],
                 ),

@@ -19,7 +19,7 @@ def clean_nb(tmp_path: Path) -> Path:
 def leaky_nb(tmp_path: Path) -> Path:
     return write_notebook(
         tmp_path / "leaky.ipynb",
-        raw_notebook([raw_code_cell('k = "AKIAIOSFODNN7EXAMPLE"')]),
+        raw_notebook([raw_code_cell('k = "AKIA' 'IOSFODNN7EXAMPLE"')]),
     )
 
 

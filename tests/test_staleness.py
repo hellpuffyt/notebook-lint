@@ -97,10 +97,15 @@ class TestUndefinedNames:
             code_cell(0, "from math import *"),
             code_cell(1, "print(pi)"),
         )
-        # A star import defines names statically unknowable; `pi` is reported,
-        # which is the conservative reading the docstring promises.
+        # Expected value changed during the audit (was: 1 finding for `pi`).
+        # Justification: after a star import the defined names are statically
+        # unknowable, so the finding's message ("depends on a cell that was
+        # deleted, moved below it, or run out of order") would be false for a
+        # perfectly valid notebook; the README promises static judgements made
+        # "honestly", and the module docstring calls the analysis conservative.
+        # Undefined-name findings are therefore suppressed after `import *`.
         findings = staleness.check(nb)
-        assert len(findings) == 1
+        assert findings == []
 
     def test_except_handler_name_defines(self) -> None:
         nb = notebook(
@@ -108,3 +113,26 @@ class TestUndefinedNames:
             code_cell(1, "print(err)"),
         )
         assert staleness.check(nb) == []
+
+
+class TestAuditRegressions:
+    """False positives found in the production-readiness audit."""
+
+    def test_lambda_parameters_are_not_undefined_reads(self) -> None:
+        nb = notebook(code_cell(0, "v = [1]\nf = lambda a: a + 1\nsorted(v, key=lambda i: i)"))
+        assert staleness.check(nb) == []
+
+    def test_lambda_default_is_still_a_read(self) -> None:
+        findings = staleness.check(notebook(code_cell(0, "f = lambda a=missing: a")))
+        assert [f.evidence for f in findings] == [("missing",)]
+
+    def test_non_python_cell_magic_is_not_a_syntax_error(self) -> None:
+        nb = notebook(
+            code_cell(0, "%%bash\nfor f in *.csv; do echo $f; done"),
+            code_cell(1, "%%writefile a.txt\nhello: this isn't python"),
+        )
+        assert staleness.check(nb) == []
+
+    def test_python_body_cell_magic_is_still_checked(self) -> None:
+        findings = staleness.check(notebook(code_cell(0, "%%time\nprint(undefined_name)")))
+        assert [f.evidence for f in findings] == [("undefined_name",)]

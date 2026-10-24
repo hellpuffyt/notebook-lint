@@ -27,6 +27,10 @@ JUPYTER_BUILTINS = frozenset({
 })
 
 
+#: Cell magics whose body is still Python (the first line is the magic).
+PYTHON_BODY_CELL_MAGICS = frozenset({"time", "timeit", "capture", "prun"})
+
+
 def strip_magics(source: str) -> str:
     """Blank out IPython magics and shell escapes, preserving line numbers.
 
@@ -35,6 +39,12 @@ def strip_magics(source: str) -> str:
     meaningful for the findings.
     """
     lines = []
+    first = source.lstrip().split("\n", 1)[0]
+    if first.startswith("%%"):
+        magic = first[2:].split(None, 1)[0] if first[2:].strip() else ""
+        if magic not in PYTHON_BODY_CELL_MAGICS:
+            # %%bash, %%writefile, %%html, %%sql ...: the body is not Python.
+            return ""
     for line in source.splitlines():
         stripped = line.lstrip()
         if stripped.startswith(("%", "!", "?")) or stripped.endswith("?"):
@@ -84,6 +94,13 @@ def read_names(tree: ast.AST) -> set[str]:
         def visit_ClassDef(self, node: ast.ClassDef) -> None:
             return
 
+        def visit_Lambda(self, node: ast.Lambda) -> None:
+            # Like a def: the body runs only when called, and its parameters
+            # are not reads. Defaults are evaluated immediately, though.
+            for default in (*node.args.defaults, *node.args.kw_defaults):
+                if default is not None:
+                    self.visit(default)
+
         def visit_Name(self, node: ast.Name) -> None:
             if isinstance(node.ctx, ast.Load):
                 reads.add(node.id)
@@ -98,6 +115,7 @@ def check(notebook: Notebook) -> list[Finding]:
 
     findings: list[Finding] = []
     known: set[str] = set(dir(builtins)) | JUPYTER_BUILTINS
+    star_imported = False
 
     for cell in notebook.code_cells:
         source = strip_magics(cell.source)
@@ -121,7 +139,13 @@ def check(notebook: Notebook) -> list[Finding]:
             )
             continue
 
-        undefined = sorted(
+        # After `from x import *` the defined names are unknowable
+        # statically, so undefined-name findings would be guesses.
+        star_imported = star_imported or any(
+            isinstance(node, ast.ImportFrom) and any(a.name == "*" for a in node.names)
+            for node in ast.walk(tree)
+        )
+        undefined = [] if star_imported else sorted(
             name for name in read_names(tree)
             if name not in known and name not in defined_names(tree)
         )
